@@ -6,9 +6,9 @@ commands for the Aiken smart contract language.
 ## Features
 
 - [x] Syntax highlighting
-- [ ] `aiken fmt` command and on-save
-- [ ] Indentation
-- [ ] Aiken LSP client
+- [x] `aiken fmt` command and on-save
+- [x] Indentation
+- [x] Aiken LSP client
 
 ## Installation
 
@@ -21,13 +21,35 @@ Add this to your `packages.el`:
 
 ```elisp
 (package! aiken-mode
-  :recipe (:host github :repo "aiken-lang/aiken-mode"))
+  :recipe (:host github
+           :repo "xxAVOGADROxx/aiken-mode"))
 ```
 
 Add this to your `config.el`:
 
 ``` elisp
-(use-package! aiken-mode)
+(use-package! aiken-mode
+  :config
+  (use-package! lsp
+    :hook
+    (aiken-mode . lsp))
+  :bind
+  (("C-c C-b" . aiken-format-buffer)
+   ("C-c C-r" . aiken-format-region)))
+
+(after! lsp-mode
+  (add-to-list 'lsp-language-id-configuration '(aiken-mode . "aiken"))
+  (lsp-register-client
+   (make-lsp-client
+    :new-connection (lsp-stdio-connection '("aiken" "lsp"))
+    :major-modes '(aiken-mode)
+    :server-id 'aiken-ls
+    :activation-fn (lsp-activate-on "aiken")
+    :priority -1
+    :multi-root t
+    :initialization-options (lambda () (list :aiken)))
+   )
+  )
 ```
 
 and run `doom sync`.
