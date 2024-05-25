@@ -111,10 +111,42 @@
   (setq-local comment-end "")
   (setq-local comment-start-skip "//+ *")
   (setq-local comment-use-syntax t)
-  (setq-local comment-auto-fill-only-comments t))
+  (setq-local comment-auto-fill-only-comments t)
+
+  ;; Format buffer before saving
+  (add-hook 'before-save-hook #'aiken-format-buffer nil t))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.ak\\'" . aiken-mode))
 
 (provide 'aiken-mode)
 ;;; aiken-mode.el ends here
+(defun aiken-format-buffer ()
+  "Format the current buffer according to the Aiken formatter."
+  (interactive)
+  (let ((tmpfile (make-temp-file "aiken-format"))
+        (outputbuf (get-buffer-create "*Aiken Format*"))
+        (errbuf (get-buffer-create "*Aiken Format Errors*"))
+        (coding-system-for-read 'utf-8)
+        (coding-system-for-write 'utf-8)
+        (cur-pos (point)))
+    (unwind-protect
+        (save-restriction
+          (widen)
+          (write-region nil nil tmpfile)
+          (if (zerop (call-process "aiken" nil errbuf nil "fmt" tmpfile))
+              (progn
+                (with-current-buffer (current-buffer)
+                  (erase-buffer)
+                  (insert-file-contents tmpfile))
+                (goto-char (min cur-pos (point-max)))
+                (message "Formatted buffer with aiken fmt"))
+            (progn
+              (with-current-buffer errbuf
+                (setq buffer-read-only nil)
+                (goto-char (point-min))
+                (insert "aiken fmt failed:\n\n")
+                (display-buffer errbuf)))))
+      (kill-buffer outputbuf)
+      (kill-buffer errbuf)
+      (delete-file tmpfile))))
